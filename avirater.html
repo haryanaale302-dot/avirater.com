@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Aviator - Portable</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #120d24; color: white; margin: 0; overflow-x: hidden; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .animate-spin-custom { animation: spin 1s linear infinite; }
+        @keyframes flew-away {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(500%, -500%) scale(1.5); opacity: 0; }
+        }
+        .plane-flew-away { animation: flew-away 1.5s ease-in forwards; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // Core Icons as Inline SVGs for maximum reliability
+        const Icons = {
+            Wallet: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+                </svg>
+            ),
+            Menu: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" />
+                </svg>
+            ),
+            Gamepad2: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <line x1="6" x2="10" y1="12" y2="12" /><line x1="8" x2="8" y1="10" y2="14" /><line x1="15" x2="15.01" y1="13" y2="13" /><line x1="18" x2="18.01" y1="11" y2="11" /><rect width="20" height="12" x="2" y="6" rx="2" />
+                </svg>
+            ),
+            ChevronLeft: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="m15 18-6-6 6-6" />
+                </svg>
+            ),
+            RotateCcw: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+                </svg>
+            ),
+            X: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+            ),
+            Plane: (props) => (
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" {...props}>
+                    <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 2H4l-1 1 3 2 2 3 1-1v-3l2-2 3.5 5.2c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z" />
+                </svg>
+            ),
+            Plus: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M5 12h14" /><path d="M12 5v14" />
+                </svg>
+            ),
+            Minus: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M5 12h14" />
+                </svg>
+            ),
+            Landmark: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <line x1="3" x2="21" y1="22" y2="22" /><line x1="6" x2="6" y1="18" y2="11" /><line x1="10" x2="10" y1="18" y2="11" /><line x1="14" x2="14" y1="18" y2="11" /><line x1="18" x2="18" y1="18" y2="11" /><polygon points="12 2 20 7 4 7 12 2" />
+                </svg>
+            ),
+            Banknote: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" />
+                </svg>
+            ),
+            Shield: (props) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                </svg>
+            )
+        };
+
+        const Icon = ({ name, className = "w-4 h-4" }) => {
+            const SvgIcon = Icons[name];
+            if (!SvgIcon) return null;
+            return <SvgIcon className={className} />;
+        };
+
+        const generateMockHistory = (count) => {
+            return Array.from({ length: count }, (_, i) => ({
+                id: i,
+                multiplier: parseFloat((Math.random() * 5 + 1).toFixed(2)),
+                time: new Date(Date.now() - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }));
+        };
+
+        const MOCK_NAMES = ['Rahul', 'Amit', 'Sanjay', 'Priya', 'Anjali', 'Vikram', 'Deepak', 'Neha'];
+
+        function App() {
+            const [view, setView] = useState('LANDING');
+            const [gameStatus, setGameStatus] = useState('WAITING');
+            const [multiplier, setMultiplier] = useState(1.0);
+            const [balance, setBalance] = useState(5000);
+            const [history, setHistory] = useState(generateMockHistory(1000));
+            const [liveBets, setLiveBets] = useState([]);
+            const [myBetHistory, setMyBetHistory] = useState([]);
+            const [activeTab, setActiveTab] = useState('ALL');
+            const [currentTime, setCurrentTime] = useState(new Date());
+            const [waitingTime, setWaitingTime] = useState(5);
+            
+            const [bet1, setBet1] = useState({ amount: 10, isPlaced: false, isCashedOut: false });
+            const [bet2, setBet2] = useState({ amount: 10, isPlaced: false, isCashedOut: false });
+
+            // Deposit & Withdraw States
+            const [depositAmount, setDepositAmount] = useState(500);
+            const [isRedirecting, setIsRedirecting] = useState(false);
+            const [withdrawData, setWithdrawData] = useState({
+                name: '',
+                bank: '',
+                ifsc: '',
+                upi: '',
+                amount: ''
+            });
+
+            const intervalRef = useRef(null);
+            const startTimeRef = useRef(0);
+            const crashPointRef = useRef(0);
+
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            const generateCrashPoint = () => {
+                const rand = Math.random();
+                if (rand < 0.03) return 1.0;
+                return parseFloat((0.98 / (1 - Math.random())).toFixed(2));
+            };
+
+            const startRound = () => {
+                const newCrashPoint = generateCrashPoint();
+                crashPointRef.current = newCrashPoint;
+                setMultiplier(1.0);
+                setGameStatus('FLYING');
+                startTimeRef.current = Date.now();
+
+                const initialBets = Array.from({ length: 15 }, (_, i) => ({
+                    id: Math.random().toString(36).substr(2, 5),
+                    user: MOCK_NAMES[Math.floor(Math.random() * MOCK_NAMES.length)],
+                    avatar: `https://picsum.photos/seed/${i + 20}/32/32`,
+                    amount: Math.floor(Math.random() * 5000) + 100,
+                    isCashedOut: false
+                }));
+                setLiveBets(initialBets);
+
+                intervalRef.current = setInterval(() => {
+                    const elapsed = (Date.now() - startTimeRef.current) / 1000;
+                    const currentMultiplier = Math.pow(1.08, elapsed * 2); 
+                    const formattedMultiplier = parseFloat(currentMultiplier.toFixed(2));
+
+                    setLiveBets(prev => prev.map(bet => {
+                        if (!bet.isCashedOut && Math.random() < 0.02 && formattedMultiplier > 1.2) {
+                            return { ...bet, isCashedOut: true, multiplier: formattedMultiplier, win: Math.floor(bet.amount * formattedMultiplier) };
+                        }
+                        return bet;
+                    }));
+
+                    if (formattedMultiplier >= crashPointRef.current) {
+                        endRound(crashPointRef.current);
+                    } else {
+                        setMultiplier(formattedMultiplier);
+                    }
+                }, 50);
+            };
+
+            const endRound = (point) => {
+                if (intervalRef.current) clearInterval(intervalRef.current);
+                setGameStatus('CRASHED');
+                setMultiplier(point);
+                setHistory(prev => [{ id: Date.now(), multiplier: point, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }, ...prev]);
+                
+                setTimeout(() => {
+                    setBet1(prev => ({ ...prev, isPlaced: false, isCashedOut: false, cashedOutAt: undefined }));
+                    setBet2(prev => ({ ...prev, isPlaced: false, isCashedOut: false, cashedOutAt: undefined }));
+                    setGameStatus('WAITING');
+                    setWaitingTime(5);
+                    setLiveBets([]);
+                }, 3000);
+            };
+
+            useEffect(() => {
+                if (gameStatus === 'WAITING' && view === 'GAME') {
+                    if (waitingTime > 0) {
+                        const timer = setTimeout(() => setWaitingTime(waitingTime - 1), 1000);
+                        return () => clearTimeout(timer);
+                    } else {
+                        startRound();
+                    }
+                }
+            }, [gameStatus, waitingTime, view]);
+
+            const placeBet = (betNum) => {
+                const bet = betNum === 1 ? bet1 : bet2;
+                if (balance < bet.amount) return;
+                setBalance(prev => prev - bet.amount);
+                const newBetState = { ...bet, isPlaced: true };
+                if (betNum === 1) setBet1(newBetState); else setBet2(newBetState);
+
+                const userLiveBet = {
+                    id: `me${betNum}`,
+                    user: 'You',
+                    avatar: 'https://picsum.photos/seed/me/32/32',
+                    amount: bet.amount,
+                    isCashedOut: false
+                };
+                setLiveBets(prev => [userLiveBet, ...prev]);
+            };
+
+            const cashOut = (betNum) => {
+                const bet = betNum === 1 ? bet1 : bet2;
+                if (gameStatus !== 'FLYING' || !bet.isPlaced || bet.isCashedOut) return;
+                const won = bet.amount * multiplier;
+                setBalance(prev => prev + won);
+                if (betNum === 1) setBet1(prev => ({ ...prev, isCashedOut: true, cashedOutAt: multiplier }));
+                else setBet2(prev => ({ ...prev, isCashedOut: true, cashedOutAt: multiplier }));
+
+                setLiveBets(prev => prev.map(lb => lb.id === `me${betNum}` ? { ...lb, isCashedOut: true, multiplier: multiplier, win: Math.floor(won) } : lb));
+                setMyBetHistory(prev => [{ id: `me${betNum}`, user: 'You', avatar: 'https://picsum.photos/seed/me/32/32', amount: bet.amount, isCashedOut: true, multiplier: multiplier, win: Math.floor(won) }, ...prev]);
+            };
+
+            const handlePlayNow = () => {
+                setView('LOADING');
+                setTimeout(() => setView('GAME'), 2500);
+            };
+
+            const handleDeposit = () => {
+                setIsRedirecting(true);
+                setTimeout(() => {
+                    setIsRedirecting(false);
+                    setView('PAYMENT');
+                }, 2000);
+            };
+
+            const handlePaymentSuccess = () => {
+                setBalance(prev => prev + depositAmount);
+                setView('GAME');
+            };
+
+            const handleWithdraw = (e) => {
+                e.preventDefault();
+                const amount = parseFloat(withdrawData.amount);
+                if (amount > balance) {
+                    alert("Insufficient balance!");
+                    return;
+                }
+                setBalance(prev => prev - amount);
+                alert("Withdrawal request submitted successfully!");
+                setView('LANDING');
+            };
+
+            if (view === 'LOADING') {
+                return (
+                    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="plane-flew-away absolute">
+                            <Icon name="Plane" className="w-32 h-32 text-red-600 drop-shadow-[0_0_20px_rgba(255,0,0,0.8)]" />
+                        </div>
+                        <div className="z-10 text-center space-y-8">
+                            <div className="w-1 h-12 bg-red-600 mx-auto" />
+                            <h2 className="text-3xl font-bold tracking-widest text-white drop-shadow-[0_0_10px_rgba(255,0,0,0.8)]">
+                                POWERED BY<br />
+                                <span className="text-4xl">Elite BETS INDIA</span>
+                            </h2>
+                            <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold tracking-widest">
+                                <Icon name="Shield" className="w-6 h-6" />
+                                <span>SAFE & SECURED</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'DEPOSIT') {
+                return (
+                    <div className="min-h-screen bg-[#120d24] text-white flex flex-col max-w-md mx-auto">
+                        <header className="px-4 py-4 flex items-center gap-4 border-b border-zinc-800">
+                            <button onClick={() => setView('LANDING')}><Icon name="ChevronLeft" className="w-6 h-6" /></button>
+                            <h1 className="text-xl font-bold">Deposit</h1>
+                        </header>
+                        <div className="p-6 space-y-6">
+                            <div className="bg-[#1b113a] p-4 rounded-2xl border border-zinc-800">
+                                <p className="text-zinc-400 text-sm mb-2">Select Amount</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[500, 1000, 2000, 5000, 10000, 20000].map(amt => (
+                                        <button 
+                                            key={amt}
+                                            onClick={() => setDepositAmount(amt)}
+                                            className={`py-2 rounded-xl font-bold border ${depositAmount === amt ? 'bg-[#00a3ff] border-[#00a3ff]' : 'bg-black/40 border-zinc-800'}`}
+                                        >
+                                            ₹{amt}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input 
+                                    type="number" 
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(parseInt(e.target.value) || 0)}
+                                    className="w-full mt-4 bg-black border border-zinc-800 rounded-xl p-3 text-center font-bold text-xl outline-none focus:border-[#00a3ff]"
+                                />
+                            </div>
+
+                            <button 
+                                onClick={handleDeposit}
+                                disabled={isRedirecting}
+                                className="w-full bg-[#00a3ff] py-4 rounded-2xl font-black text-xl shadow-lg shadow-[#00a3ff]/20 flex items-center justify-center gap-3"
+                            >
+                                {isRedirecting ? (
+                                    <><Icon name="RotateCcw" className="w-6 h-6 animate-spin" /> Redirecting...</>
+                                ) : (
+                                    `Deposit ₹${depositAmount}`
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'PAYMENT') {
+                return (
+                    <div className="min-h-screen bg-white text-black flex flex-col max-w-md mx-auto">
+                        <header className="px-4 py-4 flex items-center justify-between border-b border-zinc-100">
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">U</div>
+                                <span className="font-bold">UPI Payment</span>
+                            </div>
+                            <button onClick={() => setView('DEPOSIT')}><Icon name="X" className="w-6 h-6 text-zinc-400" /></button>
+                        </header>
+                        <div className="p-6 flex flex-col items-center space-y-8">
+                            <div className="text-center">
+                                <p className="text-zinc-500 text-sm">Payable Amount</p>
+                                <p className="text-4xl font-black">₹{depositAmount}.00</p>
+                            </div>
+                            <div className="w-64 h-64 bg-zinc-100 rounded-3xl border-4 border-zinc-50 flex flex-col items-center justify-center p-4 relative">
+                                <div className="w-full h-full border-2 border-dashed border-zinc-300 rounded-2xl flex items-center justify-center">
+                                    <Icon name="RotateCcw" className="w-12 h-12 text-zinc-300" />
+                                </div>
+                                <p className="absolute bottom-8 text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Scan QR to Pay</p>
+                            </div>
+                            <div className="w-full space-y-4">
+                                <p className="text-center text-xs text-zinc-400 font-bold uppercase tracking-widest">Or Pay Using UPI App</p>
+                                <div className="flex justify-around">
+                                    {['PhonePe', 'GPay', 'Paytm', 'Amazon'].map(app => (
+                                        <div key={app} className="flex flex-col items-center gap-1">
+                                            <div className="w-12 h-12 bg-zinc-100 rounded-xl border border-zinc-200" />
+                                            <span className="text-[10px] font-bold text-zinc-500">{app}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <button 
+                                onClick={handlePaymentSuccess}
+                                className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-xl shadow-lg shadow-emerald-500/20"
+                            >
+                                I have Paid
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'WITHDRAW') {
+                return (
+                    <div className="min-h-screen bg-[#120d24] text-white flex flex-col max-w-md mx-auto">
+                        <header className="px-4 py-4 flex items-center gap-4 border-b border-zinc-800">
+                            <button onClick={() => setView('LANDING')}><Icon name="ChevronLeft" className="w-6 h-6" /></button>
+                            <h1 className="text-xl font-bold">Withdraw</h1>
+                        </header>
+                        <form onSubmit={handleWithdraw} className="p-6 space-y-4">
+                            <div className="bg-[#1b113a] p-4 rounded-2xl border border-zinc-800 space-y-4">
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-bold uppercase mb-1 block">Account Holder Name</label>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="Enter Name"
+                                        value={withdrawData.name}
+                                        onChange={(e) => setWithdrawData({...withdrawData, name: e.target.value})}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl p-3 outline-none focus:border-[#ff7a00]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-bold uppercase mb-1 block">Bank Name</label>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="Enter Bank Name"
+                                        value={withdrawData.bank}
+                                        onChange={(e) => setWithdrawData({...withdrawData, bank: e.target.value})}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl p-3 outline-none focus:border-[#ff7a00]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-bold uppercase mb-1 block">IFSC Code</label>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="Enter IFSC"
+                                        value={withdrawData.ifsc}
+                                        onChange={(e) => setWithdrawData({...withdrawData, ifsc: e.target.value})}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl p-3 outline-none focus:border-[#ff7a00]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-bold uppercase mb-1 block">UPI ID</label>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="example@upi"
+                                        value={withdrawData.upi}
+                                        onChange={(e) => setWithdrawData({...withdrawData, upi: e.target.value})}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl p-3 outline-none focus:border-[#ff7a00]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-zinc-400 font-bold uppercase mb-1 block">Withdraw Amount (Min ₹500)</label>
+                                    <input 
+                                        required
+                                        type="number" 
+                                        min="500"
+                                        placeholder="Enter Amount"
+                                        value={withdrawData.amount}
+                                        onChange={(e) => setWithdrawData({...withdrawData, amount: e.target.value})}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl p-3 outline-none focus:border-[#ff7a00]"
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                type="submit"
+                                className="w-full bg-[#ff7a00] py-4 rounded-2xl font-black text-xl shadow-lg shadow-[#ff7a00]/20"
+                            >
+                                Submit Request
+                            </button>
+                        </form>
+                    </div>
+                );
+            }
+
+            if (view === 'LANDING') {
+                return (
+                    <div className="min-h-screen bg-[#120d24] text-white flex flex-col items-center p-4">
+                        <header className="w-full flex items-center justify-between max-w-md mb-8">
+                            <div className="flex items-center">
+                                <span className="text-[#98ff00] font-bold text-2xl italic">elite</span>
+                                <span className="text-[#f7e018] font-bold text-2xl ml-1">AVIATOR</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="bg-[#00a3ff] rounded-full px-3 py-1.5 flex flex-col items-end shadow-lg">
+                                    <span className="text-[8px] font-bold opacity-80">Wallet</span>
+                                    <span className="font-bold text-xs">₹{balance}</span>
+                                </div>
+                                <Icon name="Menu" className="w-8 h-8 text-white cursor-pointer" />
+                            </div>
+                        </header>
+
+                        <div className="w-full max-w-md bg-[#1a1535] border-2 border-[#00ff85] rounded-[24px] p-6 shadow-lg mb-8">
+                            <h2 className="text-[#ff5c00] text-lg font-bold flex items-center justify-center gap-2 mb-4">
+                                🔥 3X BONUS ON RECHARGE
+                            </h2>
+                            <div className="space-y-2 text-center">
+                                <p className="text-[#f7e018] font-bold">₹1,000 = ₹2,000 Bonus</p>
+                                <p className="text-[#f7e018] font-bold">₹5,000 = ₹10,000 Bonus</p>
+                                <p className="text-[#f7e018] font-bold">₹10,000 = ₹20,000 Bonus</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-4 w-full max-w-xs">
+                            <button onClick={handlePlayNow} className="bg-[#f7e018] text-black font-black text-xl py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-transform">
+                                <Icon name="Gamepad2" className="w-6 h-6" /> Play Now
+                            </button>
+                            <button onClick={() => setView('DEPOSIT')} className="bg-[#00d1ff] text-black font-black text-xl py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-transform">
+                                <Icon name="Landmark" className="w-6 h-6" /> Deposit
+                            </button>
+                            <button onClick={() => setView('WITHDRAW')} className="bg-[#ff7a00] text-black font-black text-xl py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-transform">
+                                <Icon name="Banknote" className="w-6 h-6" /> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-[#000000] text-white flex flex-col max-w-md mx-auto border-x border-zinc-800 relative">
+                    {/* Header */}
+                    <header className="px-4 py-3 flex items-center justify-between bg-[#1b113a]">
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('LANDING')}>
+                            <Icon name="ChevronLeft" className="w-6 h-6 text-white" />
+                            <div className="flex items-center">
+                                <span className="text-[#98ff00] font-bold text-xl italic">elite</span>
+                                <span className="text-[#f7e018] font-bold text-xl ml-1">AVIATOR</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="bg-[#00a3ff] rounded-full px-3 py-1 flex items-center gap-1">
+                                <Icon name="Wallet" className="w-3 h-3" />
+                                <span className="font-bold text-xs">₹{balance.toFixed(0)}</span>
+                            </div>
+                            <Icon name="Menu" className="w-6 h-6" />
+                        </div>
+                    </header>
+
+                    {/* History Bar */}
+                    <div className="px-2 py-2 bg-[#120d24] flex items-center gap-2 overflow-x-auto no-scrollbar border-b border-zinc-800">
+                        {history.slice(0, 10).map((item, i) => (
+                            <div key={i} className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                                item.multiplier < 2 ? 'bg-[#4e61f2] text-white' : 
+                                item.multiplier < 10 ? 'bg-[#913ef8] text-white' : 'bg-[#c017b3] text-white'
+                            }`}>
+                                {item.multiplier.toFixed(2)}x
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Main Game Area */}
+                    <div className="relative aspect-video bg-[#050505] overflow-hidden flex flex-col items-center justify-center border-y border-zinc-900">
+                        <div className="absolute inset-0 opacity-40" style={{ background: 'radial-gradient(circle at 50% 50%, #1a2a4a 0%, transparent 70%)' }} />
+                        
+                        {gameStatus === 'WAITING' ? (
+                            <div className="z-30 text-center">
+                                <p className="text-zinc-400 text-xs uppercase tracking-widest mb-1">Next round in</p>
+                                <p className="text-4xl font-black text-[#f7e018]">{waitingTime}s</p>
+                            </div>
+                        ) : (
+                            <div className="z-30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                                <h1 className="text-6xl font-black tabular-nums tracking-tighter text-white drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]">
+                                    {multiplier.toFixed(2)}x
+                                </h1>
+                                {gameStatus === 'CRASHED' && (
+                                    <p className="text-red-600 font-bold text-lg uppercase tracking-widest mt-1">Flew Away!</p>
+                                )}
+                            </div>
+                        )}
+
+                        {gameStatus !== 'WAITING' && (
+                            <div className="absolute inset-0 z-10">
+                                <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                    <path
+                                        d={`M 0 95 Q ${Math.min(multiplier * 8, 35)} 95, ${Math.min(multiplier * 15, 85)} ${Math.max(95 - multiplier * 15, 15)} L ${Math.min(multiplier * 15, 85)} 95 Z`}
+                                        fill="#ff0000" fillOpacity="0.3"
+                                    />
+                                    <path
+                                        d={`M 0 95 Q ${Math.min(multiplier * 8, 35)} 95, ${Math.min(multiplier * 15, 85)} ${Math.max(95 - multiplier * 15, 15)}`}
+                                        stroke="#ff0000" strokeWidth="2.5" fill="none" strokeLinecap="round"
+                                    />
+                                </svg>
+
+                                <div 
+                                    className={`absolute ${gameStatus === 'CRASHED' ? 'plane-flew-away' : ''}`}
+                                    style={{
+                                        left: gameStatus === 'CRASHED' ? undefined : `${Math.min(multiplier * 15, 85)}%`,
+                                        top: gameStatus === 'CRASHED' ? undefined : `${Math.max(95 - multiplier * 15, 15)}%`,
+                                        transform: gameStatus === 'CRASHED' ? undefined : 'translate(-50%, -50%)'
+                                    }}
+                                >
+                                    <div className="text-red-600 drop-shadow-[0_0_15px_rgba(255,0,0,0.8)]">
+                                        <Icon name="Plane" className="w-12 h-12" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Betting Panels */}
+                    <div className="p-2 space-y-2 bg-[#120d24]">
+                        <BetPanel bet={bet1} setBet={setBet1} onPlace={() => placeBet(1)} onCashOut={() => cashOut(1)} gameStatus={gameStatus} multiplier={multiplier} />
+                        <BetPanel bet={bet2} setBet={setBet2} onPlace={() => placeBet(2)} onCashOut={() => cashOut(2)} gameStatus={gameStatus} multiplier={multiplier} />
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex-1 bg-[#120d24] mt-2 rounded-t-3xl p-4 overflow-y-auto no-scrollbar">
+                        <div className="flex items-center justify-around mb-4 border-b border-zinc-800 pb-2">
+                            <button onClick={() => setActiveTab('ALL')} className={`text-sm font-bold pb-1 ${activeTab === 'ALL' ? 'text-white border-b-2 border-[#f7e018]' : 'text-zinc-500'}`}>All Bets</button>
+                            <button onClick={() => setActiveTab('MY')} className={`text-sm font-bold pb-1 ${activeTab === 'MY' ? 'text-white border-b-2 border-[#f7e018]' : 'text-zinc-500'}`}>My Bets</button>
+                        </div>
+                        <div className="space-y-2">
+                            {(activeTab === 'ALL' ? liveBets : [...liveBets.filter(b => b.id.startsWith('me')), ...myBetHistory]).map((bet, i) => (
+                                <div key={i} className={`flex items-center justify-between p-2 rounded-xl border ${bet.isCashedOut ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-black/40 border-zinc-800/50'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <img src={bet.avatar} className="w-6 h-6 rounded-full" />
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-bold ${bet.id.startsWith('me') ? 'text-[#f7e018]' : 'text-white'}`}>{bet.user}</span>
+                                            <span className="text-[8px] text-zinc-500">{bet.id}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-[10px] font-bold text-zinc-400">₹{bet.amount}</span>
+                                        {bet.isCashedOut && <span className="text-[10px] font-bold text-emerald-400">₹{bet.win}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function BetPanel({ bet, setBet, onPlace, onCashOut, gameStatus, multiplier }) {
+            return (
+                <div className="bg-[#1b113a] rounded-2xl p-3 border border-zinc-800">
+                    <div className="flex gap-3">
+                        <div className="flex-1 space-y-2">
+                            <div className="flex items-center justify-between bg-black rounded-full px-3 py-1 border border-zinc-800">
+                                <button onClick={() => setBet({ ...bet, amount: Math.max(1, bet.amount - 1) })} disabled={bet.isPlaced} className="text-zinc-400 p-1"><Icon name="Minus" className="w-4 h-4" /></button>
+                                <span className="font-bold">{bet.amount}</span>
+                                <button onClick={() => setBet({ ...bet, amount: bet.amount + 1 })} disabled={bet.isPlaced} className="text-zinc-400 p-1"><Icon name="Plus" className="w-4 h-4" /></button>
+                            </div>
+                        </div>
+                        <div className="flex-1">
+                            {bet.isPlaced ? (
+                                bet.isCashedOut ? (
+                                    <div className="w-full h-full bg-zinc-800 rounded-2xl flex flex-col items-center justify-center">
+                                        <span className="text-[10px] font-bold text-zinc-500">CASHED OUT</span>
+                                        <span className="text-emerald-400 font-bold">{bet.cashedOutAt?.toFixed(2)}x</span>
+                                    </div>
+                                ) : (
+                                    <button onClick={onCashOut} disabled={gameStatus !== 'FLYING'} className="w-full h-full bg-[#f7e018] text-black font-black rounded-2xl flex flex-col items-center justify-center shadow-[0_0_20px_rgba(247,224,24,0.3)]">
+                                        <span className="text-xs">CASH OUT</span>
+                                        <span className="text-lg">{(bet.amount * multiplier).toFixed(2)}₹</span>
+                                    </button>
+                                )
+                            ) : (
+                                <button onClick={onPlace} className="w-full h-full bg-[#6c3ef8] text-white font-black rounded-2xl flex flex-col items-center justify-center">
+                                    <span className="text-lg">BET</span>
+                                    <span className="text-[10px]">{bet.amount}₹</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        try {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+        } catch (err) {
+            console.error("Critical App Error:", err);
+            document.getElementById('root').innerHTML = `<div style="padding: 20px; color: white;">Error: ${err.message}</div>`;
+        }
+    </script>
+</body>
+</html>
