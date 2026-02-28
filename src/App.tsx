@@ -124,9 +124,14 @@ export default function App() {
           setUser(data.user);
           setBalance(data.user.balance);
           setView('LANDING');
+        } else if (res.status === 401) {
+          // Not logged in, stay on AUTH view
+          console.log("User not logged in");
+        } else {
+          console.warn("Auth check returned status:", res.status);
         }
       } catch (e) {
-        console.error("Auth check failed", e);
+        console.error("Auth check failed - Server might be down or unreachable", e);
       }
     };
     checkAuth();

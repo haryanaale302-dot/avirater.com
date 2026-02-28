@@ -35,7 +35,7 @@ async function startServer() {
     cors: { origin: "*" },
   });
 
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Temporary OTP storage
   const otps = new Map<string, { otp: string, expires: number }>();
@@ -333,12 +333,27 @@ async function startServer() {
     });
   });
 
-  // Vite middleware for development
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: "spa",
-  });
-  app.use(vite.middlewares);
+  // Vite middleware for development or static serving for production
+  if (process.env.NODE_ENV === "production") {
+    const distPath = path.join(__dirname, "dist");
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    } else {
+      console.error("Production build (dist folder) not found! Please run 'npm run build' first.");
+      app.get("*", (req, res) => {
+        res.status(500).send("Server Error: Production build not found.");
+      });
+    }
+  } else {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  }
 
   httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
