@@ -79,6 +79,7 @@ export default function App() {
     manualCrashPoint: null as number | null,
     isAutoMode: true,
   });
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [pendingWithdrawals, setPendingWithdrawals] = useState<any[]>([]);
 
   // Deposit State
@@ -413,6 +414,16 @@ export default function App() {
               <Wallet className="w-4 h-4 text-white" />
               <span className="font-bold text-sm">₹{balance.toFixed(0)} DEPOSIT</span>
             </div>
+            <button 
+              onClick={() => {
+                fetchAdminUsers();
+                setView('ADMIN');
+              }}
+              className="text-zinc-400 hover:text-[#f7e018] transition-colors"
+              title="Admin Panel"
+            >
+              <Zap className="w-6 h-6" />
+            </button>
             <Menu className="w-8 h-8 text-white cursor-pointer" />
           </div>
         </header>
@@ -630,6 +641,34 @@ export default function App() {
     );
   }
 
+  const fetchAdminUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        setAdminUsers(data.users);
+      }
+    } catch (e) {
+      console.error("Failed to fetch users");
+    }
+  };
+
+  const updateRemoteBalance = async (mobile: string, amount: number) => {
+    try {
+      const res = await fetch('/api/admin/update-balance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, amount })
+      });
+      if (res.ok) {
+        alert("Balance updated successfully!");
+        fetchAdminUsers();
+      }
+    } catch (e) {
+      alert("Failed to update balance");
+    }
+  };
+
   if (view === 'ADMIN') {
     return (
       <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col max-w-md mx-auto">
@@ -673,7 +712,47 @@ export default function App() {
             </div>
           </section>
 
-          {/* Wallet Control */}
+          {/* User Management */}
+          <section className="space-y-3">
+            <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">User Management ({adminUsers.length})</h2>
+            <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-black text-zinc-500 uppercase">
+                      <th className="p-3 font-medium">User</th>
+                      <th className="p-3 font-medium">Balance</th>
+                      <th className="p-3 font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {adminUsers.map((u, i) => (
+                      <tr key={i} className="hover:bg-zinc-800/30">
+                        <td className="p-3">
+                          <div className="font-bold">{u.name}</div>
+                          <div className="text-[10px] text-zinc-500">{u.mobile}</div>
+                        </td>
+                        <td className="p-3 font-black text-emerald-400">{u.balance}₹</td>
+                        <td className="p-3">
+                          <button 
+                            onClick={() => {
+                              const amt = prompt(`Enter new balance for ${u.name}`, u.balance);
+                              if (amt !== null) updateRemoteBalance(u.mobile, Number(amt));
+                            }}
+                            className="bg-zinc-800 px-2 py-1 rounded border border-zinc-700 text-[10px]"
+                          >
+                            EDIT
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {/* Wallet Control (Self) */}
           <section className="space-y-3">
             <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Wallet Control</h2>
             <div className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800">

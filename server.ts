@@ -145,6 +145,23 @@ async function startServer() {
     res.json({ message: "Logged out" });
   });
 
+  app.get("/api/admin/users", (req, res) => {
+    // In a real app, you'd check for admin role here
+    res.json({ users: users.map(u => ({ name: u.name, mobile: u.mobile, balance: u.balance, createdAt: u.createdAt })) });
+  });
+
+  app.post("/api/admin/update-balance", (req, res) => {
+    const { mobile, amount } = req.body;
+    const user = users.find(u => u.mobile === mobile);
+    if (user) {
+      user.balance = Number(amount);
+      saveUsers();
+      res.json({ message: "Balance updated", newBalance: user.balance });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  });
+
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
